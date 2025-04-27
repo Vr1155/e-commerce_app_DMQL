@@ -1,13 +1,47 @@
+# app.py
+import streamlit as st
+import pandas as pd
+from utils.db import run_query
+
+st.set_page_config(page_title="E-Commerce Analytics Dashboard", layout="wide")
+st.title("📊 E-Commerce Analytics Dashboard")
+
+# --- Define organized query sections ---
+task5_queries = {
+    "Order Status Counts": "order_status_counts.sql",
+    "Order Product Details": "order_product_details.sql",
+    "High Order Customers": "high_order_customers.sql",
+    "Seller Revenue": "seller_revenue.sql",
+}
+
+task9_queries = {
+    "Customer Geolocation": "customer_geolocation.sql",
+    "Seller Count By State": "seller_count_by_state.sql",
+    "High Value Payments": "high_value_payments.sql",
+    "Top Orders By Freight": "top_orders_by_freight.sql",
+}
+
+task8_queries = {
+    "Total Orders Per Customer": "total_orders_per_customer.sql",
+    "Top 10 Products by Revenue": "top_10_products_by_revenue.sql",
+    "Avg Delivery Time per Seller": "avg_delivery_time_per_seller.sql",
+    "Recent Orders Last 10 Years": "recent_orders_last_10_years.sql",
+    "Review Score 1 Orders": "review_score_1_orders.sql",
+}
+
 # --- Sidebar Selection ---
 st.sidebar.title("Choose Query Mode")
 
-# --- Switch between Predefined and Custom Query
+# --- Switch between Predefined Dashboard and Custom SQL Query
 query_mode = st.sidebar.radio(
     "Select Query Mode",
     ("Predefined Dashboard Queries", "Run Your Own SQL Query")
 )
 
 if query_mode == "Predefined Dashboard Queries":
+    # --- Predefined query selection ---
+    st.sidebar.title("Choose a Task and Query")
+
     task_selected = st.sidebar.radio(
         "Select Task",
         ("Basic SQL Query Exploration (Task 5)", "General Operations and Analysis (Task 9)", "Performance Tuning Queries (Task 8)")
@@ -59,17 +93,15 @@ else:
     # --- Divider Line ---
     st.markdown("---")
 
-    # --- Extra Section: Run Your Own SQL Query ---
+    # --- User SQL Query Mode ---
     st.header("📝 Run Your Own SQL Query")
 
-    # Text area for user to input query
     user_query = st.text_area("Enter your SQL query:")
 
-    # Button to run the query
     if st.button("Execute Your Query"):
         if user_query.strip() != "":
             try:
-                from utils.db import engine  # using the same engine from db.py
+                from utils.db import engine
                 with engine.connect() as conn:
                     user_df = pd.read_sql_query(user_query, conn)
                 st.success("✅ Query executed successfully!")
