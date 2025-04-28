@@ -9,7 +9,7 @@ You can explore customer behavior, seller activity, payments, reviews, and logis
 
 ## 🚀 Live App
 
-👉 [Launch Dashboard Here]([https://e-commerce-app-dmql.streamlit.app/](https://e-commerce-app-dmql.streamlit.app/))
+👉 [Launch Dashboard Here](https://e-commerce-app-dmql.streamlit.app/)
 
 ---
 
