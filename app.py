@@ -4,7 +4,7 @@ import pandas as pd
 from utils.db import run_query
 
 st.set_page_config(page_title="E-Commerce Analytics Dashboard", layout="wide")
-st.title("📊 E-Commerce Analytics Dashboard")
+st.title("E-Commerce Analytics Dashboard")
 
 # --- Define organized query sections ---
 task5_queries = {
@@ -94,7 +94,7 @@ else:
     st.markdown("---")
 
     # --- User SQL Query Mode ---
-    st.header("📝 Run Your Own SQL Query")
+    st.header("Run Your Own SQL Query")
 
     user_query = st.text_area("Enter your SQL query:")
 
