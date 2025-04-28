@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import requests
 
 
-st.set_page_config(page_title="E-Commerce Dashboard", layout="wide")
+st.set_page_config(page_title="E-Commerce Business Intelligence Dashboard", layout="wide")
 
 # --- Sidebar ---
 st.sidebar.title("Navigation")
@@ -406,7 +406,7 @@ if refresh:
 
 # --- Home Dashboard ---
 if page == "🏠 Home Dashboard":
-    st.header("🏠 Home Dashboard")
+    st.header("🏠 E-Commerce Business Intelligence Dashboard")
     with st.spinner("Loading Dashboard Insights..."):
         # Load data
         sellers = get_cached_table("sellers")
