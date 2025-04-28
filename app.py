@@ -152,6 +152,23 @@ def run_predefined_queries():
                     st.dataframe(query_sql, use_container_width=True)
                     st.toast("✅ Query executed successfully!")
 
+                    if view_name == "view_avg_delivery_time_per_seller" and 'seller_id' in query_sql.columns and 'avg_delivery_days' in query_sql.columns:
+                        top_delays = query_sql.sort_values(by='avg_delivery_days', ascending=False).head(10)
+                        fig = px.bar(
+                            top_delays,
+                            x='seller_id',
+                            y='avg_delivery_days',
+                            title=f"{query_name}: Top 10 Sellers by Avg Delivery Days",
+                            height=600
+                        )
+                        fig.update_layout(
+                            xaxis_tickangle=-45,
+                            xaxis_title="Seller ID",
+                            yaxis_title="Avg Delivery Days",
+                            margin=dict(l=40, r=40, t=80, b=160)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
                     if view_name == "view_order_product_details" and 'product_category_name' in query_sql.columns and 'price' in query_sql.columns:
                         fig = px.bar(
                             query_sql,
@@ -183,6 +200,72 @@ def run_predefined_queries():
                             margin=dict(l=40, r=40, t=80, b=160)
                         )
                         st.plotly_chart(fig, use_container_width=True)
+                    elif view_name == "view_order_status_counts" and 'order_status' in query_sql.columns and 'total_orders' in query_sql.columns:
+                        fig = px.bar(
+                            query_sql.sort_values(by='total_orders', ascending=False),
+                            x='order_status',
+                            y='total_orders',
+                            title=f"{query_name} Overview",
+                            height=600
+                        )
+                        fig.update_layout(
+                            xaxis_tickangle=-45,
+                            xaxis_title="Order Status",
+                            yaxis_title="Total Orders",
+                            margin=dict(l=40, r=40, t=80, b=160)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    elif view_name == "view_total_orders_per_customer" and 'customer_id' in query_sql.columns and 'total_orders' in query_sql.columns:
+                        def categorize_orders(x):
+                            if x == 1:
+                                return "1 Order"
+                            elif x <= 5:
+                                return "2-5 Orders"
+                            elif x <= 10:
+                                return "6-10 Orders"
+                            elif x <= 20:
+                                return "11-20 Orders"
+                            else:
+                                return "20+ Orders"
+
+                        query_sql['order_bucket'] = query_sql['total_orders'].apply(categorize_orders)
+                        bucket_counts = query_sql['order_bucket'].value_counts().reset_index()
+                        bucket_counts.columns = ['Order Range', 'Number of Customers']
+
+                        mean_orders = query_sql['total_orders'].mean()
+                        median_orders = query_sql['total_orders'].median()
+
+                        st.metric(label="Mean Orders per Customer", value=f"{mean_orders:.2f}")
+                        st.metric(label="Median Orders per Customer", value=f"{median_orders:.2f}")
+
+                        fig = px.bar(
+                            bucket_counts.sort_values('Order Range'),
+                            x='Order Range',
+                            y='Number of Customers',
+                            title=f"{query_name}: Customer Distribution by Number of Orders",
+                            height=600
+                        )
+                        fig.update_layout(
+                            xaxis_title="Order Range",
+                            yaxis_title="Number of Customers",
+                            bargap=0.2
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    elif view_name == "view_top_10_products_by_revenue" and 'product_category_name' in query_sql.columns and 'total_revenue' in query_sql.columns:
+                        fig = px.bar(
+                            query_sql,
+                            x='product_category_name',
+                            y='total_revenue',
+                            title=f"{query_name}: Revenue by Product Category",
+                            height=600
+                        )
+                        fig.update_layout(
+                            xaxis_tickangle=-45,
+                            xaxis_title="Product Category",
+                            yaxis_title="Total Revenue",
+                            margin=dict(l=40, r=40, t=80, b=160)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
                     else:
                         fig = px.bar(
                             query_sql.sort_values(by=query_sql.columns[1], ascending=False),
@@ -201,6 +284,7 @@ def run_predefined_queries():
 
     except Exception as e:
         st.error(f"❌ Failed to execute query: {e}")
+
 
 def browse_tables():
     st.header("📚 Browse Tables")
