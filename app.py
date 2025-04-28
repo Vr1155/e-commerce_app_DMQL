@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from utils.db import fetch_table
+import plotly.graph_objects as go
+
 
 st.set_page_config(page_title="E-Commerce Dashboard", layout="wide")
 
@@ -184,6 +186,7 @@ def run_predefined_queries():
                             margin=dict(l=40, r=40, t=80, b=160)
                         )
                         st.plotly_chart(fig, use_container_width=True)
+
                     elif view_name == "view_seller_revenue" and 'seller_id' in query_sql.columns and 'total_revenue' in query_sql.columns:
                         top_sellers = query_sql.sort_values(by='total_revenue', ascending=False).head(20)
                         fig = px.bar(
@@ -200,6 +203,7 @@ def run_predefined_queries():
                             margin=dict(l=40, r=40, t=80, b=160)
                         )
                         st.plotly_chart(fig, use_container_width=True)
+
                     elif view_name == "view_order_status_counts" and 'order_status' in query_sql.columns and 'total_orders' in query_sql.columns:
                         fig = px.bar(
                             query_sql.sort_values(by='total_orders', ascending=False),
@@ -215,42 +219,38 @@ def run_predefined_queries():
                             margin=dict(l=40, r=40, t=80, b=160)
                         )
                         st.plotly_chart(fig, use_container_width=True)
+
                     elif view_name == "view_total_orders_per_customer" and 'customer_id' in query_sql.columns and 'total_orders' in query_sql.columns:
-                        def categorize_orders(x):
-                            if x == 1:
-                                return "1 Order"
-                            elif x <= 5:
-                                return "2-5 Orders"
-                            elif x <= 10:
-                                return "6-10 Orders"
-                            elif x <= 20:
-                                return "11-20 Orders"
+                        st.subheader("📊 Total Orders Per Customer: Summary Statistics")
+                        try:
+                            stats = fetch_table("view_total_orders_summary").iloc[0]
+                            min_val = stats['min_orders']
+                            p25_val = stats['p25_orders']
+                            median_val = stats['median_orders']
+                            p75_val = stats['p75_orders']
+                            max_val = stats['max_orders']
+
+                            if min_val == p25_val == median_val == p75_val == max_val:
+                                st.metric("Min Orders", f"{min_val:.2f}")
+                                st.metric("25th Percentile Orders", f"{p25_val:.2f}")
+                                st.metric("Median Orders", f"{median_val:.2f}")
+                                st.metric("75th Percentile Orders", f"{p75_val:.2f}")
+                                st.metric("Max Orders", f"{max_val:.2f}")
                             else:
-                                return "20+ Orders"
+                                fig = go.Figure()
+                                fig.add_trace(go.Box(
+                                    y=[min_val, p25_val, median_val, p75_val, max_val],
+                                    boxpoints=False
+                                ))
+                                fig.update_layout(
+                                    title="Total Orders Per Customer: Box Plot Overview",
+                                    yaxis_title="Number of Orders",
+                                    height=600
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"❌ Failed to plot summary: {e}")
 
-                        query_sql['order_bucket'] = query_sql['total_orders'].apply(categorize_orders)
-                        bucket_counts = query_sql['order_bucket'].value_counts().reset_index()
-                        bucket_counts.columns = ['Order Range', 'Number of Customers']
-
-                        mean_orders = query_sql['total_orders'].mean()
-                        median_orders = query_sql['total_orders'].median()
-
-                        st.metric(label="Mean Orders per Customer", value=f"{mean_orders:.2f}")
-                        st.metric(label="Median Orders per Customer", value=f"{median_orders:.2f}")
-
-                        fig = px.bar(
-                            bucket_counts.sort_values('Order Range'),
-                            x='Order Range',
-                            y='Number of Customers',
-                            title=f"{query_name}: Customer Distribution by Number of Orders",
-                            height=600
-                        )
-                        fig.update_layout(
-                            xaxis_title="Order Range",
-                            yaxis_title="Number of Customers",
-                            bargap=0.2
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
                     elif view_name == "view_top_10_products_by_revenue" and 'product_category_name' in query_sql.columns and 'total_revenue' in query_sql.columns:
                         fig = px.bar(
                             query_sql,
@@ -266,6 +266,97 @@ def run_predefined_queries():
                             margin=dict(l=40, r=40, t=80, b=160)
                         )
                         st.plotly_chart(fig, use_container_width=True)
+
+                    elif view_name == "view_recent_orders_last_10_years" and 'order_purchase_timestamp' in query_sql.columns:
+                        query_sql['order_purchase_timestamp'] = pd.to_datetime(query_sql['order_purchase_timestamp'])
+                        query_sql['order_purchase_month'] = query_sql['order_purchase_timestamp'].dt.to_period('M').dt.to_timestamp()
+
+                        monthly_orders = query_sql.groupby('order_purchase_month').size().reset_index(name='num_orders')
+
+                        fig = px.line(
+                            monthly_orders,
+                            x='order_purchase_month',
+                            y='num_orders',
+                            title="Recent Orders Over Last 10 Years (Monthly Trend)",
+                            markers=True,
+                            height=600
+                        )
+                        fig.update_layout(
+                            xaxis_title="Month",
+                            yaxis_title="Number of Orders",
+                            margin=dict(l=40, r=40, t=80, b=80)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif view_name == "view_review_score_1_orders" and 'review_score' in query_sql.columns:
+                        review_1_count_row = fetch_table("view_review_score_1_count").iloc[0]
+                        total_reviews_row = fetch_table("view_total_reviews").iloc[0]
+
+                        review_1_count = review_1_count_row['review_score_1_count']
+                        total_reviews = total_reviews_row['total_reviews']
+
+                        fig = go.Figure(go.Indicator(
+                            mode="gauge+number",
+                            value=review_1_count,
+                            title={"text": "Review Score 1 Orders vs Total Reviews"},
+                            gauge={"axis": {"range": [0, total_reviews]}, "bar": {"color": "red"}},
+                            number={"suffix": f" / {total_reviews}"}
+                        ))
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif view_name == "view_customer_geolocation" and 'customer_latitude' in query_sql.columns and 'customer_longitude' in query_sql.columns:
+                        fig = px.scatter_mapbox(
+                            query_sql,
+                            lat="customer_latitude",
+                            lon="customer_longitude",
+                            zoom=3,
+                            center={"lat": -14.2350, "lon": -51.9253},
+                            height=700,
+                            mapbox_style="carto-positron",
+                            title="Customer Geolocation Map Overview"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif view_name == "view_seller_count_by_state" and 'seller_zip_code_prefix' in query_sql.columns and 'seller_count' in query_sql.columns:
+                        seller_geo = fetch_table("view_seller_geolocation")
+                        merged = pd.merge(query_sql, seller_geo, on="seller_zip_code_prefix", how="left")
+
+                        fig = px.scatter_mapbox(
+                            merged,
+                            lat="seller_latitude",
+                            lon="seller_longitude",
+                            size="seller_count",
+                            color="seller_count",
+                            size_max=30,
+                            color_continuous_scale="Viridis",
+                            zoom=3,
+                            center={"lat": -14.2350, "lon": -51.9253},
+                            height=700,
+                            mapbox_style="carto-positron",
+                            title="Seller Count Distribution by Location"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    elif view_name == "view_high_value_payments" and 'payment_value' in query_sql.columns:
+                        top_payments = query_sql.sort_values(by='payment_value', ascending=False).head(10)
+
+                        fig = px.bar(
+                            top_payments,
+                            x='order_id',
+                            y='payment_value',
+                            title="Top 10 High Value Payments",
+                            height=600
+                        )
+                        fig.update_layout(
+                            xaxis_tickangle=-45,
+                            xaxis_title="Order ID",
+                            yaxis_title="Payment Value",
+                            yaxis_tickprefix="$",
+                            yaxis_tickformat=",",
+                            margin=dict(l=40, r=40, t=80, b=160)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
                     else:
                         fig = px.bar(
                             query_sql.sort_values(by=query_sql.columns[1], ascending=False),
@@ -324,43 +415,89 @@ if page == "🏠 Home Dashboard":
         reviews = get_cached_table("order_reviews")
         products = get_cached_table("products")
 
-        # KPI Cards
+        # --- Updated KPI Cards ---
         st.subheader("📋 Key Metrics")
-        kpi1, kpi2, kpi3 = st.columns(3)
-        total_revenue = order_items['price'].sum()
-        total_freight = order_items['freight_value'].sum()
-        total_reviews = len(reviews)
-        kpi1.metric(label="Total Revenue", value=f"${total_revenue:,.2f}")
-        kpi2.metric(label="Total Freight Value", value=f"${total_freight:,.2f}")
-        kpi3.metric(label="Total Reviews", value=f"{total_reviews}")
+        kpi_data = get_cached_table("view_dashboard_kpis").iloc[0]
 
-        st.subheader("🗺️ States by Seller Count")
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Total Customers", f"{int(kpi_data['total_customers']):,}")
+        k2.metric("Total Orders", f"{int(kpi_data['total_orders']):,}")
+        k3.metric("Average Payment", f"${kpi_data['avg_payment']:.2f}")
+
+        k4, k5, k6 = st.columns(3)
+        k4.metric("Average Review Score", f"{kpi_data['avg_review_score']:.2f} ⭐")
+        k5.metric("Total Revenue", f"${kpi_data['total_revenue']:,.2f}")
+        k6.metric("Total Freight Value", f"${kpi_data['total_freight']:,.2f}")
+
+        k7, k8, k9 = st.columns(3)
+        k7.metric("5-Star Reviews", f"{int(kpi_data['five_star_reviews']):,}")
+        k8.metric("Total Sellers", f"{int(kpi_data['total_sellers']):,}")
+        k9.metric("Total Products", f"{int(kpi_data['total_products']):,}")
+
+
+        st.subheader("🗺️ Locations by Seller Count")
         if 'seller_zip_code_prefix' in sellers.columns:
             seller_state = sellers.dropna(subset=['seller_zip_code_prefix'])
             seller_state['seller_zip_code_prefix'] = seller_state['seller_zip_code_prefix'].astype(str)
             seller_state = seller_state.groupby('seller_zip_code_prefix').size().reset_index(name='seller_count')
-            seller_state = seller_state.sort_values('seller_count', ascending=False)
-            fig1 = px.bar(seller_state, x='seller_zip_code_prefix', y='seller_count', title='Seller Count by Zip Code', height=500)
-            st.plotly_chart(fig1, use_container_width=True)
+
+            seller_geo = get_cached_table("view_seller_geolocation")
+            merged = pd.merge(seller_state, seller_geo, on="seller_zip_code_prefix", how="left")
+
+            fig = px.scatter_mapbox(
+                merged,
+                lat="seller_latitude",
+                lon="seller_longitude",
+                size="seller_count",
+                color="seller_count",
+                size_max=30,
+                color_continuous_scale="Viridis",
+                zoom=3,
+                center={"lat": -14.2350, "lon": -51.9253},
+                height=700,
+                mapbox_style="carto-positron",
+                title="Seller Count Distribution by Location"
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 
-        # Payment Value vs Freight Value (Filtered)
-        st.subheader("💵 Payment vs Freight")
-        merged = pd.merge(order_items, payments, on='order_id')
-        filtered = merged[(merged['price'] > 0) & (merged['freight_value'] > 0)]
-        if len(filtered) > 1000:
-            filtered = filtered.sample(n=1000, random_state=42)
-        fig2 = px.scatter(filtered, x='price', y='freight_value', title='Price vs Freight Value (Sampled)', height=500)
-        st.plotly_chart(fig2, use_container_width=True)
+        st.subheader("💳 Payment vs Freight")
+        if 'price' in order_items.columns and 'freight_value' in order_items.columns:
+            fig2 = px.scatter(
+                order_items,
+                x='price',
+                y='freight_value',
+                title="Price vs Freight Value (All Data)",
+                height=600
+            )
+            st.plotly_chart(fig2, use_container_width=True)
 
         st.subheader("🚚 Average Freight Value by Seller Zip Code")
+
         merged_seller_freight = pd.merge(order_items, sellers, on='seller_id')
         merged_seller_freight = merged_seller_freight.dropna(subset=['seller_zip_code_prefix'])
         merged_seller_freight['seller_zip_code_prefix'] = merged_seller_freight['seller_zip_code_prefix'].astype(str)
         avg_freight_by_zip = merged_seller_freight.groupby('seller_zip_code_prefix')['freight_value'].mean().reset_index()
-        avg_freight_by_zip = avg_freight_by_zip.sort_values('freight_value', ascending=False).head(10)
-        fig_new = px.bar(avg_freight_by_zip, x='seller_zip_code_prefix', y='freight_value', title='Top 10 Seller Zip Codes by Avg Freight Value')
-        st.plotly_chart(fig_new, use_container_width=True)
+
+        # Merge with geolocation
+        seller_geo = get_cached_table("view_seller_geolocation")
+        merged = pd.merge(avg_freight_by_zip, seller_geo, on="seller_zip_code_prefix", how="left")
+
+        fig = px.scatter_mapbox(
+            merged,
+            lat="seller_latitude",
+            lon="seller_longitude",
+            size="freight_value",
+            color="freight_value",
+            size_max=30,
+            color_continuous_scale="Plasma",
+            zoom=3,
+            center={"lat": -14.2350, "lon": -51.9253},
+            height=700,
+            mapbox_style="carto-positron",
+            title="Average Freight Value by Seller Zip Code (Map Visualization)"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
         # Average Review Score by Payment Type
