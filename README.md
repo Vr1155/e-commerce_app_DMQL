@@ -1,116 +1,123 @@
-README.md
+# 🛍️ E-Commerce Dashboard - Streamlit App
 
-E-Commerce Database Management System (Team-24)
+Welcome to the E-Commerce Analytics Dashboard! 📊🚀  
+This project analyzes and visualizes an E-Commerce dataset using **Streamlit**, **Supabase**, **Plotly**, and **Pandas**.
 
-Project Overview
+You can explore customer behavior, seller activity, payments, reviews, and logistics trends through dynamic charts and maps!
 
-This project creates a relational database for an E-Commerce platform, based on the Brazilian e-commerce public dataset by Olist (sourced from Kaggle). The system manages data about customers, orders, products, sellers, reviews, payments, and geolocation.
+---
 
-It is designed to:
+## 🚀 Live App
 
-Efficiently store, update, and query large-scale e-commerce transactional data.
+👉 [Launch Dashboard Here](https://e-commerce-app-dmql.streamlit.app/)
 
-Ensure referential integrity, data normalization (BCNF), and scalability.
+---
 
-Support complex queries and optimize query performance.
+## 📊 Features
 
-The database supports both querying and updating operations.
+- 📋 **Home Dashboard** with 9 Key Business KPIs
+- 🗺️ **Customer and Seller Geolocation Maps** (with dynamic dot sizes)
+- 📦 **Freight and Payment Analysis**
+- 📈 **Monthly Order Trends Over 10 Years**
+- 🎯 **Top 10 High Value Payments Visualization**
+- 🌟 **Review Score 1 Analysis with Gauge Chart**
+- 📚 **Interactive Table Browser for Orders, Products, Payments, Reviews**
+- ⚡ **Supabase integration** for real-time backend queries
+- 🔥 Highly responsive and beautiful layout!
 
-Team Members
+---
 
-Vaibhav Vinay Ranashoor (UB ID: vranasho)
+## 🛠️ Tech Stack
 
-Mahmood Ali Khan (UB ID: mahmood7)
+| Technology | Purpose |
+|:-----------|:--------|
+| Streamlit | Frontend Web Application |
+| Supabase | Backend Database (Postgres) |
+| Plotly | Advanced Interactive Charts |
+| Pandas | Data manipulation and summarization |
+| Requests | API calls to Supabase RESTful endpoints |
 
-Nivedhithaa Karunanidhi (UB ID: nkarunan)
+---
 
-Files Provided
+## 📂 Project Structure
 
-create.sql : SQL script to create the database schema.
+```
+/your-repo-name
+ ├── app.py  # Main Streamlit app
+ ├── requirements.txt  # List of Python packages
+ ├── /utils
+ │     └── db.py  # Database utility to fetch tables
+ ├── .streamlit/
+ │     └── secrets.toml  # (Not pushed to GitHub, used for Supabase credentials)
+```
 
-Milestone 2 Report.pdf : Detailed report describing project tasks, E/R diagrams, BCNF analysis, queries, indexing, and optimization.
+---
 
-How to Run
+## 🔑 Secrets Setup
 
-Create the database:
+For local development, create a `.streamlit/secrets.toml` file:
 
-CREATE DATABASE ecommerce_db;
+```toml
+[general]
+SUPABASE_URL = "https://your-supabase-url.supabase.co"
+SUPABASE_API_KEY = "your-supabase-service-role-key"
+```
 
-Execute the schema creation:
+In Streamlit Cloud, paste these secrets manually in **Settings > Secrets**.
 
-Run the create.sql script in your PostgreSQL environment (e.g., PgAdmin, psql).
+---
 
-Load sample data:
+## 📈 Example KPIs
 
-Manually insert small test datasets (around 10 entries per table) to debug easily.
+| Metric | Sample Value |
+|:-------|:-------------|
+| Total Customers | 99,235 |
+| Total Orders | 123,456 |
+| Average Payment | $156.47 |
+| Average Review Score | 4.45 ⭐ |
+| Total Revenue | $4,502,000.00 |
+| Total Freight Value | $238,000.00 |
 
-For production, load cleaned CSV data using PostgreSQL's import features.
+---
 
-Execute queries:
+## 📜 Setup Instructions
 
-Run various SELECT, INSERT, UPDATE, DELETE queries (examples are given in the project report).
+1. Clone the repository:
 
-Database Schema
+```bash
+git clone https://github.com/yourusername/your-repo-name.git
+cd your-repo-name
+```
 
-Main Tables:
+2. Install the required libraries:
 
-geolocation
+```bash
+pip install -r requirements.txt
+```
 
-product_category_translation
+3. Run the app locally:
 
-customers
+```bash
+streamlit run app.py
+```
 
-sellers
+4. For deployment, connect your GitHub repo to [Streamlit Cloud](https://streamlit.io/cloud).
 
-products
+---
+## 💬 Acknowledgements
 
-orders
+- Thanks to [Streamlit](https://streamlit.io) for making rapid app development simple!
+- Thanks to [Supabase](https://supabase.io) for the amazing Postgres-as-a-service platform!
 
-order_items
+---
 
-order_payments
+## ⭐ How to Contribute
 
-order_reviews
+Pull requests are welcome!  
+For major changes, please open an issue first to discuss what you would like to change.
 
-Key Design Features
+---
 
-All relations are in Boyce-Codd Normal Form (BCNF).
+# 📢 Star this repository 🌟 if you like the project!
 
-Referential integrity enforced with primary and foreign keys.
-
-Indexes created on foreign keys and frequently filtered columns to improve performance.
-
-Dataset supports analytical queries like joins, subqueries, GROUP BY, and aggregations.
-
-Datasets Used
-
-Kaggle: Brazilian E-Commerce Public Dataset by Olist
-
-Example Queries (Provided in Report)
-
-Aggregate orders by status
-
-Find top customers by number of orders
-
-Revenue calculation per seller
-
-Payment analysis using subqueries
-
-Challenges Faced
-
-Slow queries on large datasets (~600K+ rows).
-
-Solved by creating targeted indexes and using EXPLAIN ANALYZE for query planning.
-
-Recommended partitioning and materialized views for very large tables.
-
-Bonus
-
-Building a web interface to visualize and interact with the database.
-
-Links
-
-[Google Drive Links in Report]
-
-End of README.md
-
+---
