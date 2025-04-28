@@ -380,7 +380,6 @@ def run_predefined_queries():
 
 def browse_tables():
     st.header("📚 Browse Tables")
-    st.warning("⚠️ In API mode, custom SQL is not supported. You can browse tables instead.")
 
     try:
         table = st.selectbox("Select Table to View", ["customers", "orders", "order_items", "products", "order_reviews", "order_payments", "sellers", "geolocation"])
