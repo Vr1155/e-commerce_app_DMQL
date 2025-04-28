@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 from utils.db import fetch_table
 import plotly.graph_objects as go
+import requests
 
 
 st.set_page_config(page_title="E-Commerce Dashboard", layout="wide")
@@ -11,7 +12,7 @@ st.set_page_config(page_title="E-Commerce Dashboard", layout="wide")
 # --- Sidebar ---
 st.sidebar.title("Navigation")
 refresh = st.sidebar.button("🔄 Refresh Dashboard")
-page = st.sidebar.radio("Go to", ("🏠 Home Dashboard", "📋 Predefined Queries", "📚 Browse Tables"))
+page = st.sidebar.radio("Go to", ("🏠 Home Dashboard", "📋 Predefined Queries", "📚 Browse Tables", "🛠️ Custom SQL Query"))
 
 # --- Helper Functions ---
 @st.cache_data(ttl=60)
@@ -538,6 +539,39 @@ elif page == "📋 Predefined Queries":
         st.success("✅ Predefined Queries loaded successfully!")
     except Exception as e:
         st.error(f"❌ Failed to load Predefined Queries: {e}")
+elif page == "🛠️ Custom SQL Query":
+    st.header("🛠️ Custom SQL Query Executor")
+
+    custom_query = st.text_area("Write your SQL query here:", height=150)
+
+    if st.button("Run Query"):
+        try:
+            query_to_execute = custom_query.strip().rstrip(';')  # ✅ Fix semicolon problem
+
+            url = f"{st.secrets['SUPABASE_URL']}/rest/v1/rpc/run_custom_query"
+            headers = {
+                "apikey": st.secrets["SUPABASE_API_KEY"],
+                "Authorization": f"Bearer {st.secrets['SUPABASE_API_KEY']}",
+                "Content-Type": "application/json"
+            }
+            payload = {"query_text": query_to_execute}
+
+            response = requests.post(url, headers=headers, json=payload)
+
+            if response.status_code == 200:
+                data = response.json()
+                if data and isinstance(data, list) and 'message' in data[0]:
+                    st.success(data[0]['message'])
+                elif data:
+                    df = pd.DataFrame(data)
+                    st.dataframe(df, use_container_width=True)
+                else:
+                    st.warning("⚠️ Query executed but returned no results.")
+            else:
+                st.error(f"❌ Query failed: {response.status_code} - {response.text}")
+
+        except Exception as e:
+            st.error(f"❌ Error executing query: {e}")
 
 else:
     try:
