@@ -1,112 +1,147 @@
-# app.py
+# new_app.py
+
 import streamlit as st
 import pandas as pd
-from utils.db import run_query
+import plotly.express as px
+from utils.db import fetch_table
 
-st.set_page_config(page_title="E-Commerce Analytics Dashboard", layout="wide")
-st.title("E-Commerce Analytics Dashboard")
+st.set_page_config(page_title="E-Commerce Dashboard", layout="wide")
 
-# --- Define organized query sections ---
-task5_queries = {
-    "Order Status Counts": "order_status_counts.sql",
-    "Order Product Details": "order_product_details.sql",
-    "High Order Customers": "high_order_customers.sql",
-    "Seller Revenue": "seller_revenue.sql",
-}
+# --- Sidebar ---
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ("🏠 Home Dashboard", "📋 Predefined Queries", "📚 Browse Tables"))
 
-task9_queries = {
-    "Customer Geolocation": "customer_geolocation.sql",
-    "Seller Count By State": "seller_count_by_state.sql",
-    "High Value Payments": "high_value_payments.sql",
-    "Top Orders By Freight": "top_orders_by_freight.sql",
-}
+# --- Helper Functions ---
+def show_kpis():
+    st.header("📊 Key Performance Indicators")
+    try:
+        with st.spinner("Loading KPIs..."):
+            customers_df = fetch_table("customers")
+            orders_df = fetch_table("orders")
+            payments_df = fetch_table("order_payments")
+            reviews_df = fetch_table("order_reviews")
 
-task8_queries = {
-    "Total Orders Per Customer": "total_orders_per_customer.sql",
-    "Top 10 Products by Revenue": "top_10_products_by_revenue.sql",
-    "Avg Delivery Time per Seller": "avg_delivery_time_per_seller.sql",
-    "Recent Orders Last 10 Years": "recent_orders_last_10_years.sql",
-    "Review Score 1 Orders": "review_score_1_orders.sql",
-}
+            total_customers = len(customers_df)
+            total_orders = len(orders_df)
+            avg_payment = payments_df['payment_value'].mean()
+            avg_review = reviews_df['review_score'].mean()
 
-# --- Sidebar Selection ---
-st.sidebar.title("Choose Query Mode")
+            kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+            kpi1.metric(label="Total Customers", value=f"{total_customers}")
+            kpi2.metric(label="Total Orders", value=f"{total_orders}")
+            if avg_payment > 100:
+                delta_color = "normal"
+            elif avg_payment < 50:
+                delta_color = "inverse"
+            else:
+                delta_color = "off"
+            kpi3.metric(label="Average Payment", value=f"${avg_payment:.2f}", delta_color=delta_color)
+            kpi4.metric(label="Average Review Score", value=f"{avg_review:.2f} ⭐")
 
-# --- Switch between Predefined Dashboard and Custom SQL Query
-query_mode = st.sidebar.radio(
-    "Select Query Mode",
-    ("Predefined Dashboard Queries", "Run Your Own SQL Query")
-)
+            st.toast("✅ KPIs loaded successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to load KPIs: {e}")
 
-if query_mode == "Predefined Dashboard Queries":
-    # --- Predefined query selection ---
-    st.sidebar.title("Choose a Task and Query")
-
-    task_selected = st.sidebar.radio(
-        "Select Task",
-        ("Basic SQL Query Exploration (Task 5)", "General Operations and Analysis (Task 9)", "Performance Tuning Queries (Task 8)")
-    )
-
-    if task_selected == "Basic SQL Query Exploration (Task 5)":
-        selected_query = st.sidebar.selectbox("Select Query", list(task5_queries.keys()))
-        query_file = task5_queries[selected_query]
-
-    elif task_selected == "General Operations and Analysis (Task 9)":
-        selected_query = st.sidebar.selectbox("Select Query", list(task9_queries.keys()))
-        query_file = task9_queries[selected_query]
-
-    else:
-        selected_query = st.sidebar.selectbox("Select Query", list(task8_queries.keys()))
-        query_file = task8_queries[selected_query]
-
-    # --- Execute and Display Predefined Query ---
-    st.subheader(f"🔎 Results: {selected_query}")
+def show_home_charts():
+    st.header("📈 Business Insights")
 
     try:
-        df = run_query(query_file)
-        st.dataframe(df, use_container_width=True)
+        with st.spinner("Loading Seller State Chart..."):
+            sellers_df = fetch_table("sellers")
+            if 'seller_zip_code_prefix' in sellers_df.columns:
+                seller_state = sellers_df.groupby('seller_zip_code_prefix').size().reset_index(name='seller_count')
+                fig = px.bar(seller_state, x='seller_zip_code_prefix', y='seller_count', title='Top States by Seller Count')
+                st.plotly_chart(fig, use_container_width=True)
+            st.toast("✅ Seller State Chart loaded.")
+    except Exception as e:
+        st.warning(f"⚠️ Could not load Seller State Chart: {e}")
 
-        # 🔵 Smarter Chart Logic
-        if len(df.columns) >= 2:
-            if len(df) <= 20000:
-                x_col = df.columns[0]
-                y_col_candidates = [col for col in df.columns[1:] if pd.api.types.is_numeric_dtype(df[col])]
-                if y_col_candidates:
-                    y_col = y_col_candidates[0]
-                    try:
-                        chart_df = df[[x_col, y_col]].dropna()
-                        chart_df = chart_df.set_index(x_col)
-                        st.bar_chart(chart_df)
-                    except Exception as chart_error:
-                        st.info("ℹ️ Chart could not be displayed due to plotting issue.")
-                else:
-                    st.info("ℹ️ No suitable numeric column found for charting.")
+    try:
+        with st.spinner("Loading Payment Type Distribution..."):
+            payments_df = fetch_table("order_payments")
+            if 'payment_type' in payments_df.columns:
+                payment_type = payments_df['payment_type'].value_counts().reset_index()
+                payment_type.columns = ['payment_type', 'count']
+                fig2 = px.pie(payment_type, names='payment_type', values='count', title='Payment Type Distribution')
+                st.plotly_chart(fig2, use_container_width=True)
+            st.toast("✅ Payment Type Chart loaded.")
+    except Exception as e:
+        st.warning(f"⚠️ Could not load Payment Type Chart: {e}")
+
+def run_predefined_queries():
+    st.header("📋 Predefined Analytical Queries")
+
+    task = st.selectbox("Select Task", ["Task 5: Basic Exploration", "Task 8: Performance Tuning", "Task 9: CRUD Validation"])
+
+    if task == "Task 5: Basic Exploration":
+        table = st.selectbox("Select Table", ["orders", "order_items", "products"])
+    elif task == "Task 8: Performance Tuning":
+        table = st.selectbox("Select Table", ["order_items", "orders", "order_reviews"])
+    else:
+        table = st.selectbox("Select Table", ["customers", "sellers", "order_payments"])
+
+    try:
+        with st.spinner("Fetching data..."):
+            df = fetch_table(table)
+            if df.empty:
+                st.warning("⚠️ No data found!")
             else:
-                st.info("ℹ️ Dataset too large (>20000 rows). Chart skipped to avoid crashing.")
-        else:
-            st.info("ℹ️ Not enough columns to create a chart.")
+                st.dataframe(df, use_container_width=True)
+                st.toast("✅ Data loaded successfully!")
+
+                rows_per_page = st.selectbox("Rows per page", [10, 25, 50, 100], index=1)
+                for i in range(0, len(df), rows_per_page):
+                    st.dataframe(df.iloc[i:i+rows_per_page])
+
+                if df.shape[1] >= 2 and df.shape[0] <= 20000:
+                    x = st.selectbox("Select X-axis", df.columns)
+                    y = st.selectbox("Select Y-axis", df.columns)
+                    fig = px.bar(df, x=x, y=y, title=f"{table} Overview")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                st.download_button("Download Results", data=df.to_csv(index=False), file_name=f"{table}_data.csv", mime="text/csv")
 
     except Exception as e:
-        st.error(f"❌ Failed to execute query: {e}")
+        st.error(f"❌ Failed to load table: {e}")
+
+def browse_tables():
+    st.header("📚 Browse Tables")
+    st.warning("⚠️ In API mode, custom SQL is not supported. You can browse tables instead.")
+
+    try:
+        table = st.selectbox("Select Table to View", ["customers", "orders", "order_items", "products", "order_reviews", "order_payments", "sellers", "geolocation"])
+        with st.spinner("Fetching table data..."):
+            df = fetch_table(table)
+            if df.empty:
+                st.warning("⚠️ No data found!")
+            else:
+                st.dataframe(df, use_container_width=True)
+                st.download_button("Download Table", data=df.to_csv(index=False), file_name=f"{table}_full.csv", mime="text/csv")
+                st.toast("✅ Table loaded successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to load table: {e}")
+
+# --- Main Page Switch ---
+if page == "🏠 Home Dashboard":
+    try:
+        with st.spinner("Loading Home Dashboard..."):
+            show_kpis()
+            show_home_charts()
+        st.success("✅ Home Dashboard loaded successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to load Home Dashboard: {e}")
+
+elif page == "📋 Predefined Queries":
+    try:
+        with st.spinner("Loading Predefined Queries..."):
+            run_predefined_queries()
+        st.success("✅ Predefined Queries loaded successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to load Predefined Queries: {e}")
 
 else:
-    # --- Divider Line ---
-    st.markdown("---")
-
-    # --- User SQL Query Mode ---
-    st.header("Run Your Own SQL Query")
-
-    user_query = st.text_area("Enter your SQL query:")
-
-    if st.button("Execute Your Query"):
-        if user_query.strip() != "":
-            try:
-                from utils.db import engine
-                with engine.connect() as conn:
-                    user_df = pd.read_sql_query(user_query, conn)
-                st.success("✅ Query executed successfully!")
-                st.dataframe(user_df, use_container_width=True)
-            except Exception as e:
-                st.error(f"❌ Failed to execute your query: {e}")
-        else:
-            st.warning("⚠️ Please enter a valid SQL query.")
+    try:
+        with st.spinner("Opening Browse Tables View..."):
+            browse_tables()
+    except Exception as e:
+        st.error(f"❌ Failed to load Browse Tables view: {e}")
